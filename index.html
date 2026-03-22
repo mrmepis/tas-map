@@ -9,7 +9,6 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="TAS Map">
 <meta name="theme-color" content="#16213e">
-<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' rx='32' fill='%2316213e'/><text x='90' y='115' text-anchor='middle' font-size='90' font-family='Arial' fill='%237ecfff'>🗺</text></svg>">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
@@ -34,6 +33,18 @@ header p { font-size:11px; color:#888; margin-top:2px; }
 .search-wrap { position:relative; }
 .controls input[type=text] { background:#0f3460; color:#eee; border:1px solid #7ecfff44; border-radius:4px; padding:3px 28px 3px 8px; font-size:11px; width:130px; }
 .controls input[type=text]:focus { outline:none; border-color:#7ecfff99; }
+.split-btn { background:#0f3460; color:#eee; border:1px solid #7ecfff44; border-radius:4px; padding:4px 10px; font-size:11px; cursor:pointer; white-space:nowrap; transition:background 0.15s, border-color 0.15s; }
+.split-btn.active { background:#c0392b; border-color:#e74c3c; color:#fff; }
+.split-btn:hover { border-color:#7ecfff99; }
+.report-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:3000; align-items:center; justify-content:center; }
+.report-overlay.visible { display:flex; }
+.report-modal { background:#16213e; border:1px solid #7ecfff33; border-radius:10px; padding:20px 24px; max-width:560px; width:90%; box-shadow:0 4px 24px rgba(0,0,0,0.6); }
+.report-modal h3 { color:#7ecfff; font-size:13px; text-transform:uppercase; letter-spacing:1px; margin-bottom:14px; }
+.report-modal pre { background:#0f1e36; border-radius:6px; padding:14px; font-size:11.5px; line-height:1.7; color:#ddd; white-space:pre-wrap; max-height:400px; overflow-y:auto; font-family:monospace; }
+.report-actions { display:flex; gap:10px; margin-top:14px; justify-content:flex-end; }
+.report-actions button { background:#0f3460; color:#eee; border:1px solid #7ecfff44; border-radius:4px; padding:5px 14px; font-size:11px; cursor:pointer; }
+.report-actions button:hover { border-color:#7ecfff99; }
+.report-actions .close-btn { border-color:#ffffff22; color:#888; }
 .clear-btn { position:absolute; right:5px; top:50%; transform:translateY(-50%); background:none; border:none; color:#888; cursor:pointer; font-size:13px; line-height:1; display:none; }
 .clear-btn.visible { display:block; }
 #map { flex:1; min-height:0; touch-action:manipulation; }
@@ -43,9 +54,10 @@ header p { font-size:11px; color:#888; margin-top:2px; }
 .leg-sw { width:20px; height:13px; border-radius:3px; border:1px solid rgba(255,255,255,0.15); flex-shrink:0; }
 .info-box { background:#16213e; border-radius:8px; padding:12px 15px; box-shadow:0 2px 12px rgba(0,0,0,0.6); min-width:190px; max-width:240px; }
 .info-box .ib-idle { color:#888; font-size:12px; }
-.info-box .ib-id { font-size:13px; font-weight:700; color:#7ecfff; margin-bottom:2px; }
+.info-box .ib-kmlnum { font-size:28px; font-weight:700; color:#7ecfff; line-height:1; margin-bottom:2px; }
+.info-box .ib-id { font-size:11px; color:#888; margin-bottom:4px; }
 .info-box .ib-name { font-size:12px; color:#ccc; margin-bottom:8px; line-height:1.3; }
-.info-box .ib-count { font-size:28px; font-weight:700; color:#fff; line-height:1; }
+.info-box .ib-count { font-size:20px; font-weight:700; color:#fff; line-height:1; }
 .info-box .ib-clabel { font-size:10px; color:#888; margin-bottom:6px; }
 .info-box .ib-row { display:flex; justify-content:space-between; font-size:11px; margin:2px 0; }
 .info-box .ib-k { color:#888; }
@@ -70,41 +82,28 @@ header p { font-size:11px; color:#888; margin-top:2px; }
   .controls select { font-size:10px; padding:4px 6px; }
   .controls input[type=text] { width:100px; font-size:10px; padding:4px 24px 4px 6px; }
   .info-box { min-width:150px; max-width:200px; padding:8px 10px; }
-  .info-box .ib-count { font-size:22px; }
+  .info-box .ib-kmlnum { font-size:22px; }
+  .info-box .ib-count { font-size:16px; }
   .legend { padding:6px 10px; min-width:100px; }
   .legend h4 { font-size:10px; }
   .leg-row { font-size:10px; }
 }
 @media (max-width:430px) {
   .info-box { min-width:120px; max-width:160px; padding:6px 8px; border-radius:6px; }
-  .info-box .ib-id { font-size:11px; margin-bottom:1px; }
-  .info-box .ib-name { font-size:10px; margin-bottom:5px; }
-  .info-box .ib-count { font-size:18px; }
+  .info-box .ib-kmlnum { font-size:18px; }
+  .info-box .ib-id { font-size:9px; margin-bottom:3px; }
+  .info-box .ib-count { font-size:14px; }
   .info-box .ib-clabel { font-size:9px; margin-bottom:4px; }
-  .info-box .ib-row { font-size:9px; }
   .info-box .ib-idle { font-size:10px; }
 }
 </style>
 <style>
-/* PWA: offline indicator */
-.offline-banner {
-  display:none; position:fixed; top:0; left:0; right:0;
-  background:#d73027; color:#fff; text-align:center;
-  padding:4px 10px; font-size:12px; z-index:9999;
-  font-family:Arial,sans-serif;
-}
+.offline-banner { display:none; position:fixed; top:0; left:0; right:0; background:#d73027; color:#fff; text-align:center; padding:4px 10px; font-size:12px; z-index:9999; }
 .offline-banner.visible { display:block; }
-/* PWA: cache button in controls */
-.cache-btn {
-  background:#0f3460; color:#7ecfff; border:1px solid #7ecfff44;
-  border-radius:4px; padding:3px 8px; font-size:11px; cursor:pointer;
-  white-space:nowrap;
-}
+.cache-btn { background:#0f3460; color:#7ecfff; border:1px solid #7ecfff44; border-radius:4px; padding:3px 8px; font-size:11px; cursor:pointer; white-space:nowrap; }
 .cache-btn:hover { background:#7ecfff22; }
 .cache-btn:disabled { opacity:0.5; cursor:default; }
-.cache-progress {
-  font-size:10px; color:#888; margin-left:5px; display:none;
-}
+.cache-progress { font-size:10px; color:#888; margin-left:5px; display:none; }
 </style>
 </head>
 <body>
@@ -126,14 +125,8 @@ header p { font-size:11px; color:#888; margin-top:2px; }
         <option value="dark">Dark</option>
         <option value="topo">Topo</option>
       </select>
-      <label>Filter</label>
-      <select id="filterSel">
-        <option value="all">All zones</option>
-        <option value="low">&lt;100 dwellings</option>
-        <option value="med">100–199</option>
-        <option value="high">200–299</option>
-        <option value="vhigh">300+</option>
-      </select>
+      <button id="splitToggle" class="split-btn">⚠ Needs splitting</button>
+      <button id="reportBtn" class="split-btn" style="border-color:#7ecfff66;">📋 Report</button>
       <div class="search-wrap">
         <input type="text" id="searchBox" placeholder="Search zone…" autocomplete="off">
         <button class="clear-btn" id="clearBtn" title="Clear search">✕</button>
@@ -170,6 +163,7 @@ currentBase.addTo(map);
 
 // State
 let currentFilter = 'all';
+let splitActive = false;
 let searchQuery = '';        // tracks current search string
 let activeMatchIds = null;   // Set of IDs that match search, or null if no search
 
@@ -189,11 +183,10 @@ infoCtrl.reset = function() {
 infoCtrl.update = function(p) {
   if (!p) { this.reset(); return; }
   this._div.innerHTML = `
-    <div class="ib-id">${p.id}</div>
-    <div class="ib-name">${p.name}</div>
+    <div class="ib-kmlnum">Map ${p.kmlNum || '—'}</div>
+    <div class="ib-id">${p.id} · ${p.name}</div>
     <div class="ib-count">${p.count.toLocaleString()}</div>
     <div class="ib-clabel">dwellings</div>
-    <div class="ib-row"><span class="ib-k">KML #</span><span class="ib-v">${p.kmlNum || '—'}</span></div>
     <div class="ib-row" style="margin-top:6px;font-size:10px;color:#666">${isTouchDevice ? 'Tap again to zoom in' : 'Click to zoom in'}</div>
   `;
 };
@@ -204,10 +197,7 @@ let geojsonLayer, labelGroup;
 function isActive(feature) {
   const p = feature.properties;
   // Must pass filter
-  if (currentFilter === 'low'   && p.count >= 100) return false;
-  if (currentFilter === 'med'   && (p.count < 100 || p.count >= 200)) return false;
-  if (currentFilter === 'high'  && (p.count < 200 || p.count >= 300)) return false;
-  if (currentFilter === 'vhigh' && p.count < 300) return false;
+  if (splitActive && p.count < 300) return false;
   // Must pass search
   if (activeMatchIds !== null && !activeMatchIds.has(p.id)) return false;
   return true;
@@ -327,7 +317,7 @@ function buildLayer() {
     const ring = f.geometry.coordinates[0];
     let sLon=0, sLat=0;
     ring.forEach(c => { sLon+=c[0]; sLat+=c[1]; });
-    const icon = L.divIcon({ className:'zone-label', html:f.properties.id, iconSize:null, iconAnchor:[0,6] });
+    const icon = L.divIcon({ className:'zone-label', html:f.properties.kmlNum, iconSize:[0,0], iconAnchor:[0,6] });
     L.marker([sLat/ring.length, sLon/ring.length], { icon, interactive:false }).addTo(labelGroup);
   });
   labelGroup.addTo(map);
@@ -377,9 +367,10 @@ document.getElementById('basemapSel').addEventListener('change', function() {
   currentBase.bringToBack();
 });
 
-// Filter
-document.getElementById('filterSel').addEventListener('change', function() {
-  currentFilter = this.value;
+// Needs splitting toggle
+document.getElementById('splitToggle').addEventListener('click', function() {
+  splitActive = !splitActive;
+  this.classList.toggle('active', splitActive);
   buildLayer();
 });
 
@@ -401,11 +392,8 @@ function applySearch(q) {
   activeMatchIds = new Set();
   GEOJSON.features.forEach(function(f) {
     const p = f.properties;
-    const haystack = (p.id + ' ' + p.name).toLowerCase();
-    // A feature matches if ANY term matches it
-    if (terms.some(t => haystack.includes(t))) {
-      activeMatchIds.add(p.id);
-    }
+    const tokens = (p.kmlNum + ' ' + p.id + ' ' + p.name).toLowerCase().split(/[\s\u2013\-·,]+/);
+    if (terms.every(t => tokens.some(tok => tok === t))) activeMatchIds.add(p.id);
   });
   buildLayer();
   // Zoom to matches
@@ -431,8 +419,147 @@ document.getElementById('clearBtn').addEventListener('click', function() {
   document.getElementById('searchBox').value = '';
   applySearch('');
 });
+</script>
+<!-- Report modal -->
+<div class="report-overlay" id="reportOverlay">
+  <div class="report-modal">
+    <h3>📋 Zone Splitting Report</h3>
+    <pre id="reportText"></pre>
+    <div class="report-actions">
+      <button id="copyBtn">Copy to clipboard</button>
+      <button id="downloadBtn">Download .rtf</button>
+      <button class="close-btn" id="closeReport">Close</button>
+    </div>
+  </div>
+</div>
 
-// ── PWA: Service Worker Registration ────────────────────────────
+<script>
+function generateReportText() {
+  const total = GEOJSON.features.length;
+  const allCounts = GEOJSON.features.map(f => f.properties.count);
+  const totalDwellings = allCounts.reduce((a,b) => a+b, 0);
+  const avg = Math.round(totalDwellings / total);
+  const target = 175;
+
+  const candidates = GEOJSON.features
+    .filter(f => f.properties.count >= 300)
+    .sort((a,b) => b.properties.count - a.properties.count);
+
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('en-AU', { day:'2-digit', month:'2-digit', year:'numeric' });
+
+  let lines = [];
+  lines.push('TASMANIA KML MAP NUMBERS — ZONE SPLITTING REPORT');
+  lines.push('='.repeat(50));
+  lines.push(`Generated : ${dateStr}`);
+  lines.push(`Total zones: ${total}   |   Total dwellings: ${totalDwellings.toLocaleString()}   |   Average per zone: ${avg}`);
+  lines.push(`Split threshold: 300+ dwellings`);
+  lines.push('');
+  lines.push(`CANDIDATES FOR SPLITTING (${candidates.length} zones)`);
+  lines.push('-'.repeat(50));
+
+  candidates.forEach(f => {
+    const p = f.properties;
+    const suggestedParts = Math.ceil(p.count / target);
+    const approxPerPart = Math.round(p.count / suggestedParts);
+    lines.push(`Map ${p.kmlNum}  |  ${p.name}  (${p.id})`);
+    lines.push(`  Dwellings  : ${p.count}  (+${p.count - avg} above average)`);
+    lines.push(`  Suggestion : Split into ${suggestedParts} zones (~${approxPerPart} dwellings each)`);
+    lines.push('');
+  });
+
+  lines.push('='.repeat(50));
+  lines.push('Report end');
+  return lines.join('\n');
+}
+
+function generateReportRTF() {
+  const total = GEOJSON.features.length;
+  const allCounts = GEOJSON.features.map(f => f.properties.count);
+  const totalDwellings = allCounts.reduce((a,b) => a+b, 0);
+  const avg = Math.round(totalDwellings / total);
+  const target = 175;
+
+  const candidates = GEOJSON.features
+    .filter(f => f.properties.count >= 300)
+    .sort((a,b) => b.properties.count - a.properties.count);
+
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('en-AU', { day:'2-digit', month:'2-digit', year:'numeric' });
+
+  const esc = s => s.replace(/\\/g,'\\\\').replace(/[{}]/g,'\\$&')
+                    .replace(/[^\x00-\x7F]/g, c => `\\'${c.charCodeAt(0).toString(16).padStart(2,'0')}`);
+
+  let r = '';
+  r += '{\\rtf1\\ansi\\deff0';
+  r += '{\\fonttbl{\\f0\\fswiss\\fcharset0 Arial;}{\\f1\\fmodern\\fcharset0 Courier New;}}';
+  r += '{\\colortbl;\\red22\\green33\\blue62;\\red126\\green207\\blue255;\\red200\\green230\\blue255;\\red180\\green180\\blue180;\\red220\\green220\\blue220;\\red230\\green100\\blue50;}';
+  // Title
+  r += '\\f0\\fs28\\b\\cf2 Tasmania KML Map Numbers\\cf0 \\endash  Zone Splitting Report\\b0\\fs20\\par';
+  r += '\\f0\\fs18\\cf4 ' + esc(dateStr) + '\\cf0\\par\\par';
+  // Summary box - use explicit tab stop at 2400 twips for value column
+  r += '{\\f0\\fs22\\b Summary\\b0\\par}';
+  r += '{\\pard\\f0\\fs18\\tx2400 Total zones:\\tab\\b ' + total + '\\b0\\par}';
+  r += '{\\pard\\f0\\fs18\\tx2400 Total dwellings:\\tab\\b ' + totalDwellings.toLocaleString() + '\\b0\\par}';
+  r += '{\\pard\\f0\\fs18\\tx2400 Average per zone:\\tab\\b ' + avg + '\\b0\\par}';
+  r += '{\\pard\\f0\\fs18\\tx2400 Split threshold:\\tab\\b 300+ dwellings\\b0\\par\\par}';
+  // Candidates heading
+  r += '\\f0\\fs22\\b\\cf6 Candidates for Splitting\\cf0  \\fs18\\cf4(' + candidates.length + ' zones)\\cf0\\b0\\par';
+  r += '\\brdrb\\brdrs\\brdrw10 \\par';
+
+  candidates.forEach((f, i) => {
+    const p = f.properties;
+    const suggestedParts = Math.ceil(p.count / target);
+    const approxPerPart = Math.round(p.count / suggestedParts);
+    const excess = p.count - avg;
+    r += '\\par';
+    r += '{\\pard\\f0\\fs20\\b Map ' + esc(p.kmlNum) + '  \\endash  ' + esc(p.name) + '\\b0\\fs18\\cf4  (' + esc(p.id) + ')\\cf0\\par}';
+    r += '{\\pard\\f0\\fs18\\tx2400   Dwellings:\\tab\\b ' + p.count + '\\b0  \\cf4(+' + excess + ' above average)\\cf0\\par}';
+    r += '{\\pard\\f0\\fs18\\tx2400   Suggestion:\\tab Split into \\b ' + suggestedParts + ' zones\\b0  (~\\b ' + approxPerPart + '\\b0  dwellings each)\\par}';
+    if (i < candidates.length - 1) r += '\\brdrb\\brdrs\\brdrw5 \\par';
+  });
+
+  r += '\\par\\f0\\fs16\\cf4 End of report\\cf0\\par';
+  r += '}';
+  return r;
+}
+
+document.getElementById('reportBtn').addEventListener('click', function() {
+  const text = generateReportText();
+  document.getElementById('reportText').textContent = text;
+  document.getElementById('reportOverlay').classList.add('visible');
+});
+
+document.getElementById('closeReport').addEventListener('click', function() {
+  document.getElementById('reportOverlay').classList.remove('visible');
+});
+
+document.getElementById('reportOverlay').addEventListener('click', function(e) {
+  if (e.target === this) this.classList.remove('visible');
+});
+
+document.getElementById('copyBtn').addEventListener('click', function() {
+  const text = document.getElementById('reportText').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    this.textContent = '✓ Copied!';
+    setTimeout(() => this.textContent = 'Copy to clipboard', 2000);
+  });
+});
+
+document.getElementById('downloadBtn').addEventListener('click', function() {
+  const rtf = generateReportRTF();
+  const now = new Date();
+  const d = String(now.getDate()).padStart(2,'0');
+  const m = String(now.getMonth()+1).padStart(2,'0');
+  const y = now.getFullYear();
+  const blob = new Blob([rtf], {type:'application/rtf'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `Zone_Splitting_Report_${d}${m}${y}.rtf`;
+  a.click();
+});
+
+// ── PWA: Service Worker ─────────────────────────────────────────
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js')
     .then(function(reg) { console.log('SW registered:', reg.scope); })
@@ -440,13 +567,9 @@ if ('serviceWorker' in navigator) {
 }
 
 // ── PWA: Offline Indicator ──────────────────────────────────────
-const offlineBanner = document.getElementById('offlineBanner');
+var offlineBanner = document.getElementById('offlineBanner');
 function updateOnlineStatus() {
-  if (!navigator.onLine) {
-    offlineBanner.classList.add('visible');
-  } else {
-    offlineBanner.classList.remove('visible');
-  }
+  offlineBanner.classList.toggle('visible', !navigator.onLine);
 }
 window.addEventListener('online', updateOnlineStatus);
 window.addEventListener('offline', updateOnlineStatus);
@@ -454,49 +577,34 @@ updateOnlineStatus();
 
 // ── PWA: Tile Pre-Caching ───────────────────────────────────────
 document.getElementById('cacheBtn').addEventListener('click', function() {
-  const btn = this;
-  const progress = document.getElementById('cacheProgress');
-
+  var btn = this;
+  var progress = document.getElementById('cacheProgress');
   if (!navigator.serviceWorker || !navigator.serviceWorker.controller) {
     alert('Service worker not ready yet. Reload the page and try again.');
     return;
   }
-
   btn.disabled = true;
   btn.textContent = '⏳ Caching...';
   progress.style.display = 'inline';
   progress.textContent = 'Generating tile list...';
 
-  // Generate tile URLs for the Launceston region at useful zoom levels
-  // Bounds: roughly lat -41.7 to -41.3, lon 146.8 to 147.2
-  const tileUrls = [];
-  const template = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png';
-  const subdomains = ['a', 'b', 'c'];
-
-  // Zoom levels 10-14 cover region overview down to street level
-  for (let z = 10; z <= 14; z++) {
-    const minTile = latLonToTile(-41.7, 146.8, z);
-    const maxTile = latLonToTile(-41.3, 147.3, z);
-    for (let x = minTile.x; x <= maxTile.x; x++) {
-      for (let y = minTile.y; y <= maxTile.y; y++) {
-        const s = subdomains[(x + y) % 3];
-        tileUrls.push(
-          template.replace('{s}', s).replace('{z}', z).replace('{x}', x).replace('{y}', y)
-        );
+  var tileUrls = [];
+  var template = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png';
+  var subdomains = ['a', 'b', 'c'];
+  for (var z = 10; z <= 14; z++) {
+    var minT = latLonToTile(-41.7, 146.8, z);
+    var maxT = latLonToTile(-41.3, 147.3, z);
+    for (var x = minT.x; x <= maxT.x; x++) {
+      for (var y = minT.y; y <= maxT.y; y++) {
+        var s = subdomains[(x + y) % 3];
+        tileUrls.push(template.replace('{s}', s).replace('{z}', z).replace('{x}', x).replace('{y}', y));
       }
     }
   }
-
   progress.textContent = tileUrls.length + ' tiles to cache...';
+  navigator.serviceWorker.controller.postMessage({ type: 'PRECACHE_TILES', urls: tileUrls });
 
-  // Send to service worker
-  navigator.serviceWorker.controller.postMessage({
-    type: 'PRECACHE_TILES',
-    urls: tileUrls
-  });
-
-  // Listen for progress
-  navigator.serviceWorker.addEventListener('message', function handler(event) {
+  function handler(event) {
     if (event.data.type === 'PRECACHE_PROGRESS') {
       progress.textContent = event.data.cached + '/' + event.data.total;
     }
@@ -504,21 +612,18 @@ document.getElementById('cacheBtn').addEventListener('click', function() {
       btn.disabled = false;
       btn.textContent = '✅ Cached!';
       progress.textContent = event.data.cached + ' tiles saved';
-      setTimeout(function() {
-        btn.textContent = '📥 Cache tiles';
-        progress.style.display = 'none';
-      }, 5000);
+      setTimeout(function() { btn.textContent = '📥 Cache tiles'; progress.style.display = 'none'; }, 5000);
       navigator.serviceWorker.removeEventListener('message', handler);
     }
-  });
+  }
+  navigator.serviceWorker.addEventListener('message', handler);
 });
 
-// Helper: convert lat/lon to tile coordinates at zoom z
 function latLonToTile(lat, lon, z) {
-  const n = Math.pow(2, z);
-  const x = Math.floor((lon + 180) / 360 * n);
-  const latRad = lat * Math.PI / 180;
-  const y = Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n);
+  var n = Math.pow(2, z);
+  var x = Math.floor((lon + 180) / 360 * n);
+  var latRad = lat * Math.PI / 180;
+  var y = Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n);
   return { x: x, y: y };
 }
 </script>
