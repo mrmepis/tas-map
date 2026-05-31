@@ -115,8 +115,22 @@ header p { font-size:11px; color:#888; margin-top:2px; }
   .info-box .ib-idle { font-size:12px; }
 }
 </style>
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TAS Map">
+<meta name="theme-color" content="#16213e">
+<style>
+.offline-banner { display:none; position:fixed; top:0; left:0; right:0; background:#d73027; color:#fff; text-align:center; padding:4px 10px; font-size:12px; z-index:9999; }
+.offline-banner.visible { display:block; }
+.cache-btn { background:#0f3460; color:#7ecfff; border:1px solid #7ecfff44; border-radius:4px; padding:3px 8px; font-size:11px; cursor:pointer; white-space:nowrap; margin-left:6px; }
+.cache-btn:hover { background:#7ecfff22; }
+.cache-btn:disabled { opacity:0.5; cursor:default; }
+.cache-progress { font-size:10px; color:#888; margin-left:5px; display:none; }
+</style>
 </head>
 <body>
+<div class="offline-banner" id="offlineBanner">⚡ Offline — using cached tiles</div>
 <header>
   <div>
     <h1>Tasmania Dwelling Count Map</h1>
@@ -142,6 +156,8 @@ header p { font-size:11px; color:#888; margin-top:2px; }
       </div>
       <button id="splitToggle" class="split-btn">⚠ Needs splitting</button>
       <button id="reportBtn" class="split-btn" style="border-color:#7ecfff66;">📋 Report</button>
+      <button class="cache-btn" id="cacheBtn" title="Download tiles for offline use">📥 Cache tiles</button>
+      <span class="cache-progress" id="cacheProgress"></span>
     </div>
   </div>
 </header>
@@ -591,6 +607,72 @@ document.getElementById('downloadBtn').addEventListener('click', function() {
   a.download = `Zone_Splitting_Report_${d}${m}${y}.rtf`;
   a.click();
 });
+
+// ── PWA: Service Worker ─────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js')
+    .then(function(reg) { console.log('SW registered:', reg.scope); })
+    .catch(function(err) { console.warn('SW registration failed:', err); });
+}
+
+// ── PWA: Offline Indicator ──────────────────────────────────────
+(function() {
+  var banner = document.getElementById('offlineBanner');
+  function update() { if (banner) banner.classList.toggle('visible', !navigator.onLine); }
+  window.addEventListener('online', update);
+  window.addEventListener('offline', update);
+  update();
+})();
+
+// ── PWA: Tile Pre-Caching ───────────────────────────────────────
+(function() {
+  var btn = document.getElementById('cacheBtn');
+  if (!btn) return;
+  function latLonToTile(lat, lon, z) {
+    var n = Math.pow(2, z);
+    var x = Math.floor((lon + 180) / 360 * n);
+    var latRad = lat * Math.PI / 180;
+    var y = Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n);
+    return { x: x, y: y };
+  }
+  btn.addEventListener('click', function() {
+    var progress = document.getElementById('cacheProgress');
+    if (!navigator.serviceWorker || !navigator.serviceWorker.controller) {
+      alert('Service worker not ready yet. Reload the page and try again.');
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = '⏳ Caching...';
+    progress.style.display = 'inline';
+    progress.textContent = 'Generating tile list...';
+    var tileUrls = [];
+    var template = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png';
+    var subs = ['a','b','c'];
+    for (var z = 10; z <= 14; z++) {
+      var lo = latLonToTile(-41.7, 146.8, z), hi = latLonToTile(-41.3, 147.3, z);
+      for (var x = lo.x; x <= hi.x; x++) {
+        for (var y = lo.y; y <= hi.y; y++) {
+          tileUrls.push(template.replace('{s}', subs[(x+y)%3]).replace('{z}', z).replace('{x}', x).replace('{y}', y));
+        }
+      }
+    }
+    progress.textContent = tileUrls.length + ' tiles to cache...';
+    navigator.serviceWorker.controller.postMessage({ type: 'PRECACHE_TILES', urls: tileUrls });
+    function handler(event) {
+      if (event.data && event.data.type === 'PRECACHE_PROGRESS') {
+        progress.textContent = event.data.cached + '/' + event.data.total;
+      }
+      if (event.data && event.data.type === 'PRECACHE_DONE') {
+        btn.disabled = false;
+        btn.textContent = '✅ Cached!';
+        progress.textContent = event.data.cached + ' tiles saved';
+        setTimeout(function() { btn.textContent = '📥 Cache tiles'; progress.style.display = 'none'; }, 5000);
+        navigator.serviceWorker.removeEventListener('message', handler);
+      }
+    }
+    navigator.serviceWorker.addEventListener('message', handler);
+  });
+})();
 </script>
 </body>
 </html>
