@@ -132,7 +132,7 @@ header p { font-size:11px; color:#888; margin-top:2px; }
       <label>Base map</label>
       <select id="basemapSel">
         <option value="carto">Carto Voyager</option>
-        <option value="osm">OpenStreetMap</option>
+        <option value="osm" selected>OpenStreetMap</option>
         <option value="dark">Dark</option>
         <option value="topo">Topo</option>
       </select>
@@ -177,7 +177,7 @@ const baseLayers = {
 };
 
 const map = L.map('map', { center:[-41.46, 147.0], zoom:11 });
-let currentBase = baseLayers.carto;
+let currentBase = baseLayers.osm;
 currentBase.addTo(map);
 
 // State
