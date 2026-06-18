@@ -239,7 +239,7 @@ function normalStyle(feature) {
     weight: 1.2,
     opacity: 0.8,
     color: 'rgba(255,255,255,0.45)',
-    fillOpacity: 0.29,
+    fillOpacity: 0.58,
     interactive: true
   };
 }
@@ -249,8 +249,8 @@ function searchHighlightStyle(feature) {
     fillColor: getColor(feature.properties),
     weight: 3,
     opacity: 1,
-    color: '#ffeb3b',
-    fillOpacity: 0.425,
+    color: '#ff8c00',
+    fillOpacity: 0.85,
     interactive: true
   };
 }
@@ -262,9 +262,10 @@ function highlight(e) {
   if (!isActive(layer.feature)) return;
   const isMatch = activeMatchIds !== null && activeMatchIds.has(layer.feature.properties.id);
   layer.setStyle({
-    weight: isMatch ? 3 : 2.5,
-    color: isMatch ? '#ffeb3b' : '#fff',
-    fillOpacity: 0.425
+    weight: 3,
+    color: isMatch ? '#ff8c00' : '#ff0000',
+    opacity: 1,
+    fillOpacity: 0
   });
   layer.bringToFront();
   infoCtrl.update(layer.feature.properties);
